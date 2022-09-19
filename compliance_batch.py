@@ -1,20 +1,16 @@
-import time, os, requests, json, random, sys
+import time, os, requests, json, sys, ast, argparse
 
 from mongo_connector import MongoLoader
-from dateutil.parser import parse
 from datetime import datetime
 from os.path import isfile, join
 from os import listdir
 from collections import defaultdict
-#---------------------------------------------------------------------------------------#
-#import config file (change configfile_example.py to configfile.py with your config data)
-#---------------------------------------------------------------------------------------#
-#sys.path.insert(1, '../')
+
 import configfile as cnf
 
 class TwCompliance:
 
-    def __init__ (self, loading_from_file=None, loading_from_mongo=False):
+    def __init__(self, loading_from_file=None, loading_from_mongo=False):
       
         if cnf.COMPLIANCE["folder_path"]  is None:
             raise Exception("Compliance: folder path is None")
@@ -34,16 +30,11 @@ class TwCompliance:
             self.object = json.loads(open(self.object_name, "r").read())
         else:
             self.object = defaultdict(lambda: None)
-        self.users = None
-        if loading_from_mongo:
-           user_loader = MongoLoader()
-           self.users = user_loader.get_user_ids()
-        elif not loading_from_file is None:
-           pass
+        self.loading_from_mongo = loading_from_mongo
+        self.loading_from_file = loading_from_file
 
-    # For User Compliance Job, replace the type value with users instead of tweets
-    # Also replace the name value with your desired job name
-    #type may be tweets for defined user tweet ids and users for defined user ids 
+        self.users = None
+
 
     ###############################
     #Create compliance job
@@ -96,7 +87,7 @@ class TwCompliance:
     ##########################
     def UploadData(self):
         upload_url = self.object["data"]["upload_url"]
-        response = self.connect_to_endpoint(upload_url, headers = {'Content-Type': "text/plain"})
+        response = self.connect_to_endpoint(upload_url, headers={'Content-Type': "text/plain"})
         print(response)
 
     ############################
@@ -135,11 +126,14 @@ class TwCompliance:
     #Collect user ids from MongoDB
     ##############################
     def collect_users(self):
-        client, db, collection = self.connect_to_db()
-        collection_users = db["users"]
-        for item in collection_users.find({},{"id": 1 }):
-            self.users.add(item["id"])
-        client.close()
+        if self.loading_from_mongo:
+            user_loader = MongoLoader()
+            self.users = user_loader.get_user_ids()
+        elif not self.loading_from_file is None:
+            if os.path.isfile(self.loading_from_file):
+                self.users = [int(item) for item in open(self.loading_from_file, "r").read().split("\n") if item.isdecimal()]
+            else:
+                raise Exception("Compliance: File with user ids not exists")
 
     def remove_suspend(self):
         known = set()
@@ -152,14 +146,6 @@ class TwCompliance:
         print("All: {} known suspend:{}".format(len(self.users), len(known)))
         self.users = self.users - known 
         print("After filtering:{}".format(len(self.users)))
-
-
-    def connect_to_db(self):
-        #connect to mongo db collection
-        client = MongoClient(self.setup["address"], self.setup["port"])
-        db = client[self.setup["db"]]
-        collection = db[self.setup["collection"]]
-        return client, db, collection
 
 
     def main(self):
@@ -190,10 +176,15 @@ class TwCompliance:
         os.remove(self.data)
         print("\tFinished at {}".format(datetime.now()))
    
-def main():
-    comp = TwCompliance()
-    comp.main()
 
+parser = argparse.ArgumentParser(description='Twitter Batch Compliance parser')
+parser.add_argument('-i', '--input', action='store', dest='input',
+                    type=str,default='', help='String value used for input of user ids. Type \'mongo\' to use mongoDB collection described in configuration file. Or write path and filename in order to load user ids from file. In case of file user ids should be separated with new line character.')
+args = parser.parse_args()
 if __name__ == "__main__":
-    print("New execution: {}".format(datetime.now()))
-    main()
+    comp = None
+    if args.input == "mongo":
+        comp = TwCompliance(loading_from_mongo=True)
+    else:
+        comp = TwCompliance(loading_from_file=True)
+    comp.main()
