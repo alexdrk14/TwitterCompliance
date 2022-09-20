@@ -150,10 +150,11 @@ class TwCompliance:
 
     def main(self):
         date = datetime.now()
+        """Check if Compliance object exist, in such case load data from object.
+        ---If no, need to collect user ids and create compliance job"""
         if not os.path.isfile(self.object_name):
             self.collect_users()
-            
-            f_out = open(self.data,"w+")
+            f_out = open(self.data, "w+")
             for user in self.users:
                 f_out.write("{}\n".format(user))
             f_out.close()
@@ -179,7 +180,7 @@ class TwCompliance:
 
 parser = argparse.ArgumentParser(description='Twitter Batch Compliance parser')
 parser.add_argument('-i', '--input', action='store', dest='input',
-                    type=str,default='', help='String value used for input of user ids. Type \'mongo\' to use mongoDB collection described in configuration file. Or write path and filename in order to load user ids from file. In case of file user ids should be separated with new line character.')
+                    type=str, default='mongo', help='String value used for input of user ids. Type \'mongo\' to use mongoDB collection described in configuration file. Or write path and filename in order to load user ids from file. In case of file user ids should be separated with new line character.')
 args = parser.parse_args()
 if __name__ == "__main__":
     comp = None
