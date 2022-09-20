@@ -11,7 +11,7 @@ When execution is finished script store compliance result for each user in singl
 In case when user id is not in result file, this user is alive and publicly available. 
 In other case user may have the following labels: Deleted, protected ,removed and suspended.
 
-## Execution via crown process
+## Execution via cron process
 
 In order to check user compliance in daily basis, script should be executed via crontab process like:
 ```bash
