@@ -1,5 +1,5 @@
 from pymongo import MongoClient
-import configfile.DBCONFIG as config
+import configfile as config
 
 class MongoLoader:
 
@@ -8,20 +8,20 @@ class MongoLoader:
         self.client = None
         self.collection = None
         self.uids = set()
-        if config["address"] is None:
+        if config.DBCONFIG["address"] is None:
             raise Exception("MongoLoader: Configuration file has 'None' value for server IP address.")
-        if config["port"] is  None:
+        if config.DBCONFIG["port"] is  None:
             raise Exception("MongoLoader: Configuration file has 'None' value for server port number.")
-        if config["db"] is None:
+        if config.DBCONFIG["db"] is None:
             raise Exception("MongoLoader: Configuration file has 'None' value for server database name.")
-        if config["collection"] is None:
+        if config.DBCONFIG["collection"] is None:
             raise Exception("MongoLoader: Configuration file has 'None' value for server collection name")
 
     ##############################
     #Collect user ids from MongoDB
     ##############################
     def get_user_ids(self):
-        client, db, collection = self._connect_to_db_()
+        self._connect_to_db_()
         item = self.collection.find_one({})
         if "user" in item and "id" in item["user"]:
             #collection is raw json file collected from twitter with text and another fields
@@ -58,11 +58,11 @@ class MongoLoader:
     ##############################
     def _connect_to_db_(self):
         #connect to mongo db collection
-        self._disconnect_from_db()
-        client = MongoClient(config["address"], config["port"])
-        db = client[config["db"]]
-        collection = db[config["collection"]]
-        return client, db, collection
+        self._disconnect_from_db_()
+        self.client = MongoClient(config.DBCONFIG["address"], config.DBCONFIG["port"])
+        self.db = self.client[config.DBCONFIG["db"]]
+        self.collection = self.db[config.DBCONFIG["collection"]]
+        
     
     ##############################
     #Disconnect from mongo DB
